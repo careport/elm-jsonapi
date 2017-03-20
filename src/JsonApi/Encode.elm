@@ -61,6 +61,9 @@ relationship rel =
 
                 Many values ->
                     Encode.list values
+
+                None ->
+                    Encode.null
     in
         Encode.object [ ( "data", data ) ]
 

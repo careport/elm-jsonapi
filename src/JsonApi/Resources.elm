@@ -3,10 +3,12 @@ module JsonApi.Resources
         ( id
         , attributes
         , attribute
+        , relatedOptionalResource
         , relatedResource
         , relatedResourceCollection
         , links
         , meta
+        , optionalAttributes
         , relatedLinks
         , relatedMeta
         , build
@@ -27,7 +29,7 @@ import Dict
 import Json.Encode as Encode
 import Json.Decode as Decode exposing (Decoder, decodeValue, field)
 import JsonApi.Data exposing (..)
-import JsonApi.OneOrMany as OneOrMany exposing (OneOrMany(..), extractOne, extractMany)
+import JsonApi.OneOrMany as OneOrMany exposing (OneOrMany(..), extractOne, extractOneOrNone, extractMany)
 import JsonApi.Data exposing (..)
 import List.Extra
 import Uuid.Barebones exposing (isValidUuid)
@@ -41,6 +43,13 @@ relatedResource relationshipName resource =
     (related relationshipName resource)
         |> Result.andThen extractOne
 
+{-|
+    Find an optionally present related resource.
+-}
+relatedOptionalResource : String -> Resource -> Result String (Maybe Resource)
+relatedOptionalResource relationshipName resource =
+    (related relationshipName resource)
+        |> Result.andThen extractOneOrNone
 
 {-| Find a related collection of resources.
     Will return an Err if a single resource is found.
@@ -88,6 +97,18 @@ attributes decoder (Resource _ object _) =
         Nothing ->
             Err "No attributes key found for resource"
 
+{-| Serialize the attributes of a Resource, providing an empty attributes object
+    if none exists. Because the attributes are unstructured, you must provider
+    a Json Decoder to convert them into a type that you define.
+-}
+optionalAttributes : Decoder a -> Resource -> Result String a
+optionalAttributes decoder (Resource _ object _) =
+    case object.attributes of
+        Just attrs ->
+            decodeValue decoder attrs
+
+        Nothing ->
+            decodeValue decoder (Encode.object [])
 
 {-| Serialize a single attributes of a Resource. You must provide the string key of the attribute
     and a Json Decoder to convert the attribute into a type that you define.
